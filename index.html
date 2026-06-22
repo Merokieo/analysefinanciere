@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analyse Financière — Calculateur</title>
+  <meta name="description" content="Application statique pour calculer les principaux tableaux et ratios d'analyse financière." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand">
+        <div class="brand-mark">AF</div>
+        <div>
+          <h1>Analyse Financière</h1>
+          <p>Tableaux, ratios & décisions</p>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <a href="#dashboard">Synthèse</a>
+        <a href="#bilan-fonctionnel">Bilan fonctionnel</a>
+        <a href="#bilan-financier">Bilan financier</a>
+        <a href="#sig">SIG & CAF</a>
+        <a href="#ratios">Ratios</a>
+        <a href="#rentabilite">Seuil de rentabilité</a>
+        <a href="#investissement">VAN / TRI / IP</a>
+        <a href="#emprunt">Emprunt</a>
+        <a href="#evolution">Évolution</a>
+        <a href="#export">Export</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="saveBtn" class="secondary-btn" type="button">Sauvegarder</button>
+        <button id="printBtn" class="secondary-btn" type="button">Imprimer</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">GitHub Pages ready · 100% HTML/CSS/JS</span>
+          <h2>Calculateur complet pour l’analyse financière</h2>
+          <p>
+            Remplis les formes, lis les résultats, exporte tes tableaux et utilise les formules comme support de révision.
+            Les montants sont affichés en DH, mais tu peux les utiliser avec n’importe quelle devise.
+          </p>
+        </div>
+        <div class="hero-card">
+          <label for="currencyInput">Devise</label>
+          <input id="currencyInput" type="text" value="DH" maxlength="8" />
+          <label for="companyInput">Entreprise / dossier</label>
+          <input id="companyInput" type="text" placeholder="Ex: Société Alpha" />
+          <label for="periodInput">Période</label>
+          <input id="periodInput" type="text" placeholder="Ex: Exercice N" />
+        </div>
+      </header>
+
+      <section class="panel" id="dashboard">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Synthèse automatique</span>
+            <h3>Dashboard</h3>
+          </div>
+          <button class="ghost-btn" type="button" data-fill-demo>Remplir exemple</button>
+        </div>
+        <div class="kpi-grid" id="dashboardKpis"></div>
+        <div class="analysis-box" id="globalComment"></div>
+      </section>
+
+      <section class="panel" id="bilan-fonctionnel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Équilibre financier</span>
+            <h3>Bilan fonctionnel</h3>
+          </div>
+          <span class="formula">FRNG − BFR = TN</span>
+        </div>
+        <div class="grid two">
+          <div class="form-card">
+            <h4>Actif fonctionnel</h4>
+            <div class="field-list">
+              <label>Emplois stables <input data-field="bf_emplois_stables" type="number" step="0.01" /></label>
+              <label>Actif circulant exploitation <input data-field="bf_ace" type="number" step="0.01" /></label>
+              <label>Actif circulant hors exploitation <input data-field="bf_ache" type="number" step="0.01" /></label>
+              <label>Trésorerie active <input data-field="bf_tresorerie_active" type="number" step="0.01" /></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h4>Passif fonctionnel</h4>
+            <div class="field-list">
+              <label>Ressources stables <input data-field="bf_ressources_stables" type="number" step="0.01" /></label>
+              <label>Passif circulant exploitation <input data-field="bf_pce" type="number" step="0.01" /></label>
+              <label>Passif circulant hors exploitation <input data-field="bf_pche" type="number" step="0.01" /></label>
+              <label>Trésorerie passive <input data-field="bf_tresorerie_passive" type="number" step="0.01" /></label>
+            </div>
+          </div>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="bilanFonctionnelTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="bilan-financier">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Liquidité & solvabilité</span>
+            <h3>Bilan financier</h3>
+          </div>
+          <span class="formula">FDR = Capitaux permanents − Actif immobilisé</span>
+        </div>
+        <div class="grid two">
+          <div class="form-card">
+            <h4>Actif</h4>
+            <div class="field-list">
+              <label>Actif immobilisé net <input data-field="bfi_actif_immobilise" type="number" step="0.01" /></label>
+              <label>Stocks <input data-field="bfi_stocks" type="number" step="0.01" /></label>
+              <label>Créances <input data-field="bfi_creances" type="number" step="0.01" /></label>
+              <label>Disponibilités <input data-field="bfi_disponibilites" type="number" step="0.01" /></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h4>Passif</h4>
+            <div class="field-list">
+              <label>Capitaux propres <input data-field="bfi_capitaux_propres" type="number" step="0.01" /></label>
+              <label>Dettes financières M/LT <input data-field="bfi_dettes_mlt" type="number" step="0.01" /></label>
+              <label>Dettes court terme <input data-field="bfi_dettes_ct" type="number" step="0.01" /></label>
+            </div>
+          </div>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="bilanFinancierTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="sig">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Compte de résultat</span>
+            <h3>SIG & CAF</h3>
+          </div>
+          <span class="formula">VA → EBE → REX → RCAI → RN</span>
+        </div>
+        <div class="grid three">
+          <div class="form-card">
+            <h4>Activité</h4>
+            <div class="field-list">
+              <label>Ventes de marchandises <input data-field="sig_ventes_marchandises" type="number" step="0.01" /></label>
+              <label>Achats revendus de marchandises <input data-field="sig_achats_revendus" type="number" step="0.01" /></label>
+              <label>Production vendue <input data-field="sig_production_vendue" type="number" step="0.01" /></label>
+              <label>Production stockée <input data-field="sig_production_stockee" type="number" step="0.01" /></label>
+              <label>Production immobilisée <input data-field="sig_production_immobilisee" type="number" step="0.01" /></label>
+              <label>Consommations de l’exercice <input data-field="sig_consommations" type="number" step="0.01" /></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h4>Exploitation</h4>
+            <div class="field-list">
+              <label>Subventions d’exploitation <input data-field="sig_subventions" type="number" step="0.01" /></label>
+              <label>Impôts et taxes <input data-field="sig_impots_taxes" type="number" step="0.01" /></label>
+              <label>Charges de personnel <input data-field="sig_charges_personnel" type="number" step="0.01" /></label>
+              <label>Autres produits d’exploitation <input data-field="sig_autres_produits_exp" type="number" step="0.01" /></label>
+              <label>Autres charges d’exploitation <input data-field="sig_autres_charges_exp" type="number" step="0.01" /></label>
+              <label>Dotations d’exploitation <input data-field="sig_dotations_exp" type="number" step="0.01" /></label>
+              <label>Reprises d’exploitation <input data-field="sig_reprises_exp" type="number" step="0.01" /></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h4>Financier, non courant & CAF</h4>
+            <div class="field-list">
+              <label>Produits financiers <input data-field="sig_produits_financiers" type="number" step="0.01" /></label>
+              <label>Charges financières <input data-field="sig_charges_financieres" type="number" step="0.01" /></label>
+              <label>Produits non courants <input data-field="sig_produits_non_courants" type="number" step="0.01" /></label>
+              <label>Charges non courantes <input data-field="sig_charges_non_courants" type="number" step="0.01" /></label>
+              <label>Impôt sur les résultats <input data-field="sig_impot_resultat" type="number" step="0.01" /></label>
+              <label>Dotations calculées CAF <input data-field="sig_dotations_caf" type="number" step="0.01" /></label>
+              <label>Reprises calculées CAF <input data-field="sig_reprises_caf" type="number" step="0.01" /></label>
+              <label>Produits de cession <input data-field="sig_produits_cession" type="number" step="0.01" /></label>
+              <label>VNA des immobilisations cédées <input data-field="sig_vna_cession" type="number" step="0.01" /></label>
+            </div>
+          </div>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="sigTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="ratios">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Performance & structure</span>
+            <h3>Ratios essentiels</h3>
+          </div>
+          <span class="formula">Ratios calculés depuis les tableaux précédents</span>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="ratiosTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="rentabilite">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Exploitation</span>
+            <h3>Seuil de rentabilité</h3>
+          </div>
+          <span class="formula">SR = Charges fixes / Taux MCV</span>
+        </div>
+        <div class="grid two">
+          <div class="form-card">
+            <h4>Données</h4>
+            <div class="field-list">
+              <label>Chiffre d’affaires <input data-field="sr_ca" type="number" step="0.01" /></label>
+              <label>Charges variables <input data-field="sr_charges_variables" type="number" step="0.01" /></label>
+              <label>Charges fixes <input data-field="sr_charges_fixes" type="number" step="0.01" /></label>
+              <label>Durée de l’exercice en jours <input data-field="sr_jours" type="number" step="1" value="360" /></label>
+            </div>
+          </div>
+          <div class="result-table-wrap compact-table">
+            <table class="result-table" id="rentabiliteTable"></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="investissement">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Choix d’investissement</span>
+            <h3>VAN / TRI / IP / Délai de récupération</h3>
+          </div>
+          <span class="formula">VAN = Σ CFt / (1+k)^t − I0</span>
+        </div>
+        <div class="grid two">
+          <div class="form-card">
+            <h4>Données de base</h4>
+            <div class="field-list">
+              <label>Investissement initial <input data-field="inv_initial" type="number" step="0.01" /></label>
+              <label>Taux d’actualisation (%) <input data-field="inv_taux" type="number" step="0.01" /></label>
+            </div>
+            <div class="table-actions">
+              <button type="button" class="secondary-btn" id="addCfRow">Ajouter cash-flow</button>
+              <button type="button" class="ghost-btn" id="clearCfRows">Vider</button>
+            </div>
+            <div class="editable-table-wrap">
+              <table class="editable-table" id="cashflowInputTable">
+                <thead><tr><th>Année</th><th>Cash-flow</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="result-table-wrap compact-table">
+            <table class="result-table" id="investissementTable"></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="emprunt">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Financement</span>
+            <h3>Tableau d’amortissement d’emprunt</h3>
+          </div>
+          <span class="formula">Annuité = C × i / (1 − (1+i)^−n)</span>
+        </div>
+        <div class="grid two">
+          <div class="form-card">
+            <h4>Données</h4>
+            <div class="field-list">
+              <label>Capital emprunté <input data-field="emp_capital" type="number" step="0.01" /></label>
+              <label>Taux annuel (%) <input data-field="emp_taux" type="number" step="0.01" /></label>
+              <label>Durée en années <input data-field="emp_duree" type="number" step="1" /></label>
+              <label>Méthode
+                <select data-field="emp_methode">
+                  <option value="annuite">Annuités constantes</option>
+                  <option value="amortissement">Amortissements constants</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="result-table-wrap compact-table">
+            <table class="result-table" id="empruntSummaryTable"></table>
+          </div>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="empruntTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="evolution">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Comparaison</span>
+            <h3>Évolution sur 3 exercices</h3>
+          </div>
+          <span class="formula">Taux d’évolution = (N − N-1) / N-1</span>
+        </div>
+        <div class="editable-table-wrap">
+          <table class="editable-table" id="evolutionInputTable">
+            <thead>
+              <tr><th>Indicateur</th><th>N-2</th><th>N-1</th><th>N</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="result-table-wrap">
+          <table class="result-table" id="evolutionTable"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="export">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Utilisation</span>
+            <h3>Exporter / importer / réinitialiser</h3>
+          </div>
+        </div>
+        <div class="grid three">
+          <div class="form-card action-card">
+            <h4>Sauvegarde locale</h4>
+            <p>Les données sont gardées dans ton navigateur avec localStorage.</p>
+            <button id="saveBtn2" class="primary-btn" type="button">Sauvegarder maintenant</button>
+          </div>
+          <div class="form-card action-card">
+            <h4>Fichier JSON</h4>
+            <p>Export pour reprendre le dossier plus tard ou l’envoyer à quelqu’un.</p>
+            <button id="downloadJsonBtn" class="primary-btn" type="button">Télécharger JSON</button>
+            <label class="file-label">Importer JSON <input id="importJsonInput" type="file" accept="application/json" /></label>
+          </div>
+          <div class="form-card action-card danger-zone">
+            <h4>Réinitialiser</h4>
+            <p>Efface les champs et les tableaux de ce dossier.</p>
+            <button id="resetBtn" class="danger-btn" type="button">Tout effacer</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>Créé pour réviser et calculer rapidement les tableaux d’analyse financière. Vérifie toujours les règles exactes demandées par ton professeur.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
