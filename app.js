@@ -1,679 +1,639 @@
-const STORAGE_KEY = "analyse-financiere-app-v1";
+const STORE_KEY = "analyse-financiere-pro-v2";
 
-const state = {
-  fields: {},
-  cashflows: [0, 0, 0, 0],
-  evolution: {
-    "Chiffre d’affaires": [0, 0, 0],
-    "Résultat net": [0, 0, 0],
-    "Total actif": [0, 0, 0],
-    "Capitaux propres": [0, 0, 0],
-    "EBE": [0, 0, 0]
-  }
+const fields = {
+  functional: [
+    ["capitauxPropres", "Capitaux propres", 980000],
+    ["dettesFinancieres", "Dettes financières", 420000],
+    ["amortProv", "Amort. & provisions", 160000],
+    ["emploisStables", "Emplois stables", 1050000],
+    ["actifExploitation", "Actif circulant exploitation", 340000],
+    ["passifExploitation", "Passif circulant exploitation", 260000],
+    ["actifHorsExploitation", "Actif hors exploitation", 55000],
+    ["passifHorsExploitation", "Passif hors exploitation", 36000],
+    ["tresorerieActif", "Trésorerie actif", 89000],
+    ["tresoreriePassif", "Trésorerie passif", 42000]
+  ],
+  financial: [
+    ["totalActif", "Total actif", 1680000],
+    ["totalPassif", "Total passif", 1680000],
+    ["actifsCourants", "Actifs courants", 484000],
+    ["passifsCourants", "Passifs courants", 338000],
+    ["stock", "Stocks", 126000],
+    ["clients", "Clients", 170000],
+    ["fournisseurs", "Fournisseurs", 138000],
+    ["dettesTotales", "Total dettes", 700000]
+  ],
+  sig: [
+    ["ventesMarchandises", "Ventes de marchandises", 720000],
+    ["achatsMarchandises", "Achats de marchandises", 405000],
+    ["variationStockMarch", "Variation stock marchandises", 18000],
+    ["productionVendue", "Production vendue", 420000],
+    ["productionStockee", "Production stockée", 25000],
+    ["productionImmobilisee", "Production immobilisée", 10000],
+    ["consommations", "Consommations de l’exercice", 310000],
+    ["subventions", "Subventions d’exploitation", 12000],
+    ["impotsTaxes", "Impôts et taxes", 28000],
+    ["chargesPersonnel", "Charges de personnel", 190000],
+    ["autresProduits", "Autres produits", 8000],
+    ["autresCharges", "Autres charges", 14000],
+    ["reprises", "Reprises", 9000],
+    ["dotations", "Dotations", 44000],
+    ["produitsFinanciers", "Produits financiers", 11000],
+    ["chargesFinancieres", "Charges financières", 22000],
+    ["produitsExceptionnels", "Produits non courants", 6000],
+    ["chargesExceptionnelles", "Charges non courantes", 9000],
+    ["impotResultat", "Impôt sur le résultat", 27000]
+  ],
+  breakEven: [
+    ["caBreak", "Chiffre d’affaires", 1140000],
+    ["chargesVariables", "Charges variables", 690000],
+    ["chargesFixes", "Charges fixes", 280000],
+    ["prixUnitaire", "Prix unitaire", 120],
+    ["coutVariableUnitaire", "Coût variable unitaire", 72]
+  ],
+  investment: [
+    ["investmentInitial", "Investissement initial", 300000],
+    ["discountRate", "Taux d’actualisation (%)", 10],
+    ["cf1", "Cash-flow année 1", 82000],
+    ["cf2", "Cash-flow année 2", 94000],
+    ["cf3", "Cash-flow année 3", 107000],
+    ["cf4", "Cash-flow année 4", 120000],
+    ["cf5", "Cash-flow année 5", 126000]
+  ],
+  loan: [
+    ["loanAmount", "Capital emprunté", 250000],
+    ["loanRate", "Taux annuel (%)", 7],
+    ["loanYears", "Durée (années)", 5]
+  ]
 };
 
-const numberFields = new Set([
-  "bf_emplois_stables", "bf_ace", "bf_ache", "bf_tresorerie_active", "bf_ressources_stables", "bf_pce", "bf_pche", "bf_tresorerie_passive",
-  "bfi_actif_immobilise", "bfi_stocks", "bfi_creances", "bfi_disponibilites", "bfi_capitaux_propres", "bfi_dettes_mlt", "bfi_dettes_ct",
-  "sig_ventes_marchandises", "sig_achats_revendus", "sig_production_vendue", "sig_production_stockee", "sig_production_immobilisee", "sig_consommations",
-  "sig_subventions", "sig_impots_taxes", "sig_charges_personnel", "sig_autres_produits_exp", "sig_autres_charges_exp", "sig_dotations_exp", "sig_reprises_exp",
-  "sig_produits_financiers", "sig_charges_financieres", "sig_produits_non_courants", "sig_charges_non_courants", "sig_impot_resultat", "sig_dotations_caf", "sig_reprises_caf", "sig_produits_cession", "sig_vna_cession",
-  "sr_ca", "sr_charges_variables", "sr_charges_fixes", "sr_jours", "inv_initial", "inv_taux", "emp_capital", "emp_taux", "emp_duree"
-]);
+const evolutionRows = [
+  ["ca", "Chiffre d’affaires"],
+  ["ebe", "EBE"],
+  ["rn", "Résultat net"],
+  ["caf", "CAF"],
+  ["asset", "Total actif"],
+  ["equity", "Capitaux propres"],
+  ["debt", "Dettes totales"]
+];
 
-function $(selector) {
-  return document.querySelector(selector);
+const defaultEvolution = {
+  ca: [920000, 1030000, 1140000],
+  ebe: [150000, 181000, 219000],
+  rn: [58000, 77000, 101000],
+  caf: [96000, 118000, 145000],
+  asset: [1420000, 1550000, 1680000],
+  equity: [820000, 900000, 980000],
+  debt: [600000, 650000, 700000]
+};
+
+const state = createDefaultState();
+
+function createDefaultState() {
+  const base = { evolution: structuredClone(defaultEvolution) };
+  for (const group of Object.values(fields)) {
+    for (const [key, , value] of group) base[key] = value;
+  }
+  return base;
 }
 
-function $all(selector) {
-  return Array.from(document.querySelectorAll(selector));
+function n(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
-function n(key) {
-  const value = Number(state.fields[key]);
-  return Number.isFinite(value) ? value : 0;
+function money(value) {
+  const number = n(value);
+  return new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 0 }).format(number) + " DH";
 }
 
-function currency() {
-  return (state.fields.currency || $("#currencyInput")?.value || "DH").trim() || "DH";
+function pct(value, decimals = 1) {
+  const number = n(value);
+  return Number.isFinite(number) ? number.toFixed(decimals).replace(".", ",") + " %" : "—";
 }
 
-function formatMoney(value) {
-  const val = Number(value);
-  if (!Number.isFinite(val)) return "—";
-  return `${val.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ${currency()}`;
-}
-
-function formatNumber(value, decimals = 2) {
-  const val = Number(value);
-  if (!Number.isFinite(val)) return "—";
-  return val.toLocaleString("fr-FR", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
-}
-
-function formatPercent(value) {
-  const val = Number(value);
-  if (!Number.isFinite(val)) return "—";
-  return `${(val * 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %`;
+function ratio(value, decimals = 2) {
+  const number = n(value);
+  if (!Number.isFinite(number)) return "—";
+  return number.toFixed(decimals).replace(".", ",");
 }
 
 function safeDiv(a, b) {
-  const denominator = Number(b);
-  if (!Number.isFinite(denominator) || Math.abs(denominator) < 1e-9) return NaN;
-  return Number(a) / denominator;
+  return Math.abs(n(b)) < 1e-9 ? 0 : n(a) / n(b);
 }
 
-function signClass(value, higherIsBetter = true) {
-  const val = Number(value);
-  if (!Number.isFinite(val) || Math.abs(val) < 1e-9) return "muted";
-  if (higherIsBetter) return val > 0 ? "good" : "bad";
-  return val > 0 ? "bad" : "good";
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
-function ratioClass(value, goodLimit, warnLimit) {
-  const val = Number(value);
-  if (!Number.isFinite(val)) return "muted";
-  if (val >= goodLimit) return "good";
-  if (val >= warnLimit) return "warn";
-  return "bad";
+function cssClass(value) {
+  if (value > 0) return "good-text";
+  if (value < 0) return "bad-text";
+  return "";
 }
 
-function row(label, value, formula = "", interpretation = "", options = {}) {
-  const display = options.type === "percent" ? formatPercent(value)
-    : options.type === "number" ? formatNumber(value)
-    : options.type === "raw" ? String(value)
-    : formatMoney(value);
-  const cls = options.className || "";
-  return { label, value, display, formula, interpretation, className: cls };
+function hydrate() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    Object.assign(state, createDefaultState(), saved);
+  } catch (_) {}
 }
 
-function renderTable(selector, columns, rows) {
-  const table = $(selector);
-  if (!table) return;
-  table.innerHTML = `
-    <thead><tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-    <tbody>
-      ${rows.map(r => `
-        <tr>
-          <td>${r.label ?? ""}</td>
-          <td class="result-value ${r.className ?? ""}">${r.display ?? ""}</td>
-          <td>${r.formula ?? ""}</td>
-          <td>${r.interpretation ?? ""}</td>
-        </tr>
-      `).join("")}
-    </tbody>
-  `;
+function persist() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  toast("Enregistré");
 }
 
-function renderSimpleTable(selector, columns, rows) {
-  const table = $(selector);
-  if (!table) return;
-  table.innerHTML = `
-    <thead><tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(cols => `<tr>${cols.map(col => `<td>${col}</td>`).join("")}</tr>`).join("")}</tbody>
-  `;
+function bindNavigation() {
+  document.querySelectorAll(".nav-tab").forEach((button) => {
+    button.addEventListener("click", () => setView(button.dataset.view));
+  });
 }
 
-function bilanFonctionnel() {
-  const frng = n("bf_ressources_stables") - n("bf_emplois_stables");
-  const bfre = n("bf_ace") - n("bf_pce");
-  const bfrhe = n("bf_ache") - n("bf_pche");
-  const bfr = bfre + bfrhe;
-  const tn = n("bf_tresorerie_active") - n("bf_tresorerie_passive");
-  const check = frng - bfr;
-  return { frng, bfre, bfrhe, bfr, tn, check };
+function setView(id) {
+  document.querySelectorAll(".nav-tab").forEach((button) => button.classList.toggle("active", button.dataset.view === id));
+  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === id));
+  const view = document.getElementById(id);
+  document.getElementById("viewTitle").textContent = view.dataset.title;
 }
 
-function bilanFinancier() {
-  const actifCirculant = n("bfi_stocks") + n("bfi_creances") + n("bfi_disponibilites");
-  const totalActif = n("bfi_actif_immobilise") + actifCirculant;
-  const capitauxPermanents = n("bfi_capitaux_propres") + n("bfi_dettes_mlt");
-  const totalDettes = n("bfi_dettes_mlt") + n("bfi_dettes_ct");
-  const passif = n("bfi_capitaux_propres") + totalDettes;
-  const fdr = capitauxPermanents - n("bfi_actif_immobilise");
-  const liquiditeGenerale = safeDiv(actifCirculant, n("bfi_dettes_ct"));
-  const liquiditeReduite = safeDiv(n("bfi_creances") + n("bfi_disponibilites"), n("bfi_dettes_ct"));
-  const liquiditeImmediate = safeDiv(n("bfi_disponibilites"), n("bfi_dettes_ct"));
-  const autonomie = safeDiv(n("bfi_capitaux_propres"), passif || totalActif);
-  const endettement = safeDiv(totalDettes, n("bfi_capitaux_propres"));
-  return { actifCirculant, totalActif, capitauxPermanents, totalDettes, passif, fdr, liquiditeGenerale, liquiditeReduite, liquiditeImmediate, autonomie, endettement };
+function renderForms() {
+  for (const [group, list] of Object.entries(fields)) {
+    const holder = document.querySelector(`[data-form="${group}"]`);
+    if (!holder) continue;
+    holder.innerHTML = list.map(([key, label]) => `
+      <div class="field">
+        <label for="${key}">${label}</label>
+        <div class="input-wrap"><input id="${key}" data-key="${key}" type="number" step="0.01" value="${state[key] ?? 0}"></div>
+      </div>
+    `).join("");
+  }
+
+  document.querySelectorAll("input[data-key]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state[input.dataset.key] = n(input.value);
+      calculate();
+    });
+  });
 }
 
-function sig() {
-  const margeCommerciale = n("sig_ventes_marchandises") - n("sig_achats_revendus");
-  const production = n("sig_production_vendue") + n("sig_production_stockee") + n("sig_production_immobilisee");
-  const ca = n("sig_ventes_marchandises") + n("sig_production_vendue");
-  const valeurAjoutee = margeCommerciale + production - n("sig_consommations");
-  const ebe = valeurAjoutee + n("sig_subventions") - n("sig_impots_taxes") - n("sig_charges_personnel");
-  const rex = ebe + n("sig_autres_produits_exp") + n("sig_reprises_exp") - n("sig_autres_charges_exp") - n("sig_dotations_exp");
-  const resultatFinancier = n("sig_produits_financiers") - n("sig_charges_financieres");
+function calcSIG() {
+  const achatsRev = n(state.achatsMarchandises) + n(state.variationStockMarch);
+  const margeCommerciale = n(state.ventesMarchandises) - achatsRev;
+  const production = n(state.productionVendue) + n(state.productionStockee) + n(state.productionImmobilisee);
+  const valeurAjoutee = margeCommerciale + production - n(state.consommations);
+  const ebe = valeurAjoutee + n(state.subventions) - n(state.impotsTaxes) - n(state.chargesPersonnel);
+  const rex = ebe + n(state.reprises) + n(state.autresProduits) - n(state.dotations) - n(state.autresCharges);
+  const resultatFinancier = n(state.produitsFinanciers) - n(state.chargesFinancieres);
   const rcai = rex + resultatFinancier;
-  const resultatNonCourant = n("sig_produits_non_courants") - n("sig_charges_non_courants");
-  const resultatAvantImpot = rcai + resultatNonCourant;
-  const resultatNet = resultatAvantImpot - n("sig_impot_resultat");
-  const caf = resultatNet + n("sig_dotations_caf") - n("sig_reprises_caf") + n("sig_vna_cession") - n("sig_produits_cession");
-  return { margeCommerciale, production, ca, valeurAjoutee, ebe, rex, resultatFinancier, rcai, resultatNonCourant, resultatAvantImpot, resultatNet, caf };
+  const resultatNonCourant = n(state.produitsExceptionnels) - n(state.chargesExceptionnelles);
+  const resultatNet = rcai + resultatNonCourant - n(state.impotResultat);
+  const caf = resultatNet + n(state.dotations) - n(state.reprises);
+  return { achatsRev, margeCommerciale, production, valeurAjoutee, ebe, rex, resultatFinancier, rcai, resultatNonCourant, resultatNet, caf };
 }
 
-function seuilRentabilite() {
-  const ca = n("sr_ca");
-  const cv = n("sr_charges_variables");
-  const cf = n("sr_charges_fixes");
-  const jours = n("sr_jours") || 360;
+function calcFunctional() {
+  const ressourcesStables = n(state.capitauxPropres) + n(state.dettesFinancieres) + n(state.amortProv);
+  const frng = ressourcesStables - n(state.emploisStables);
+  const bfre = n(state.actifExploitation) - n(state.passifExploitation);
+  const bfrhe = n(state.actifHorsExploitation) - n(state.passifHorsExploitation);
+  const bfr = bfre + bfrhe;
+  const tn = frng - bfr;
+  const tnDirect = n(state.tresorerieActif) - n(state.tresoreriePassif);
+  return { ressourcesStables, frng, bfre, bfrhe, bfr, tn, tnDirect };
+}
+
+function calcFinancial(sig, functional) {
+  const dettes = n(state.dettesTotales) || Math.max(0, n(state.totalPassif) - n(state.capitauxPropres));
+  const liquiditeGenerale = safeDiv(state.actifsCourants, state.passifsCourants);
+  const liquiditeReduite = safeDiv(n(state.actifsCourants) - n(state.stock), state.passifsCourants);
+  const solvabilite = safeDiv(state.totalActif, dettes);
+  const autonomie = safeDiv(state.capitauxPropres, state.totalPassif);
+  const endettement = safeDiv(dettes, state.capitauxPropres);
+  const couvertureImmobilisations = safeDiv(n(state.capitauxPropres) + n(state.dettesFinancieres), state.emploisStables);
+  const bfrDays = safeDiv(functional.bfr, n(state.ventesMarchandises) + n(state.productionVendue)) * 360;
+  const dso = safeDiv(state.clients, n(state.ventesMarchandises) + n(state.productionVendue)) * 360;
+  const dpo = safeDiv(state.fournisseurs, n(state.achatsMarchandises) + n(state.consommations)) * 360;
+  const stockDays = safeDiv(state.stock, n(state.achatsMarchandises) + n(state.consommations)) * 360;
+  const margeNette = safeDiv(sig.resultatNet, n(state.ventesMarchandises) + n(state.productionVendue));
+  const margeEbe = safeDiv(sig.ebe, n(state.ventesMarchandises) + n(state.productionVendue));
+  const roe = safeDiv(sig.resultatNet, state.capitauxPropres);
+  const roa = safeDiv(sig.resultatNet, state.totalActif);
+  const cafDettes = safeDiv(sig.caf, n(state.dettesFinancieres));
+  return { dettes, liquiditeGenerale, liquiditeReduite, solvabilite, autonomie, endettement, couvertureImmobilisations, bfrDays, dso, dpo, stockDays, margeNette, margeEbe, roe, roa, cafDettes };
+}
+
+function calcBreakEven() {
+  const ca = n(state.caBreak);
+  const cv = n(state.chargesVariables);
+  const cf = n(state.chargesFixes);
   const mcv = ca - cv;
   const tauxMcv = safeDiv(mcv, ca);
-  const sr = safeDiv(cf, tauxMcv);
-  const margeSecurite = ca - sr;
-  const indiceSecurite = safeDiv(margeSecurite, ca);
-  const pointMort = safeDiv(sr, ca) * jours;
-  return { ca, cv, cf, mcv, tauxMcv, sr, margeSecurite, indiceSecurite, pointMort };
+  const seuil = tauxMcv ? safeDiv(cf, tauxMcv) : 0;
+  const pointMort = safeDiv(seuil, ca) * 360;
+  const resultat = mcv - cf;
+  const margeUnitaire = n(state.prixUnitaire) - n(state.coutVariableUnitaire);
+  const quantiteCritique = margeUnitaire ? safeDiv(cf, margeUnitaire) : 0;
+  return { mcv, tauxMcv, seuil, pointMort, resultat, margeUnitaire, quantiteCritique };
 }
 
-function npv(initial, rate, flows) {
-  return flows.reduce((sum, cf, idx) => sum + cf / Math.pow(1 + rate, idx + 1), -initial);
+function calcInvestment() {
+  const initial = n(state.investmentInitial);
+  const rate = n(state.discountRate) / 100;
+  const flows = [n(state.cf1), n(state.cf2), n(state.cf3), n(state.cf4), n(state.cf5)];
+  const rows = flows.map((cf, index) => {
+    const year = index + 1;
+    const factor = 1 / Math.pow(1 + rate, year);
+    const discounted = cf * factor;
+    return { year, cf, factor, discounted };
+  });
+  const pv = rows.reduce((sum, row) => sum + row.discounted, 0);
+  const van = pv - initial;
+  const ip = safeDiv(pv, initial);
+  const tri = calcIRR(initial, flows);
+  const payback = calcPayback(initial, flows);
+  return { rows, pv, van, ip, tri, payback };
 }
 
-function irr(initial, flows) {
-  let low = -0.9999;
+function calcIRR(initial, flows) {
+  let low = -0.95;
   let high = 10;
-  let lowVal = npv(initial, low, flows);
-  let highVal = npv(initial, high, flows);
-  if (!Number.isFinite(lowVal) || !Number.isFinite(highVal) || lowVal * highVal > 0) return NaN;
-  for (let i = 0; i < 120; i += 1) {
+  const npv = (r) => flows.reduce((sum, cf, i) => sum + cf / Math.pow(1 + r, i + 1), -initial);
+  let fLow = npv(low);
+  let fHigh = npv(high);
+  if (fLow * fHigh > 0) return 0;
+  for (let i = 0; i < 120; i++) {
     const mid = (low + high) / 2;
-    const midVal = npv(initial, mid, flows);
-    if (Math.abs(midVal) < 1e-7) return mid;
-    if (lowVal * midVal <= 0) {
+    const fMid = npv(mid);
+    if (Math.abs(fMid) < 0.000001) return mid;
+    if (fLow * fMid <= 0) {
       high = mid;
-      highVal = midVal;
+      fHigh = fMid;
     } else {
       low = mid;
-      lowVal = midVal;
+      fLow = fMid;
     }
   }
   return (low + high) / 2;
 }
 
-function payback(initial, flows) {
-  let cumulative = -initial;
-  for (let i = 0; i < flows.length; i += 1) {
-    const before = cumulative;
-    cumulative += flows[i];
-    if (cumulative >= 0) {
-      const missing = Math.abs(before);
-      const fraction = flows[i] === 0 ? 0 : missing / flows[i];
+function calcPayback(initial, flows) {
+  let acc = 0;
+  for (let i = 0; i < flows.length; i++) {
+    const previous = acc;
+    acc += flows[i];
+    if (acc >= initial) {
+      const fraction = flows[i] ? (initial - previous) / flows[i] : 0;
       return i + fraction;
     }
   }
-  return NaN;
+  return null;
 }
 
-function investissement() {
-  const initial = n("inv_initial");
-  const rate = n("inv_taux") / 100;
-  const flows = state.cashflows.map(Number).filter(v => Number.isFinite(v));
-  const van = npv(initial, rate, flows);
-  const tri = irr(initial, flows);
-  const vaFlux = flows.reduce((sum, cf, idx) => sum + cf / Math.pow(1 + rate, idx + 1), 0);
-  const ip = safeDiv(vaFlux, initial);
-  const dr = payback(initial, flows);
-  return { initial, rate, flows, van, tri, vaFlux, ip, dr };
-}
-
-function emprunt() {
-  const capital = n("emp_capital");
-  const rate = n("emp_taux") / 100;
-  const years = Math.max(0, Math.round(n("emp_duree")));
-  const methode = state.fields.emp_methode || "annuite";
-  const rows = [];
+function calcLoan() {
+  const capital = n(state.loanAmount);
+  const years = Math.max(1, Math.round(n(state.loanYears)));
+  const rate = n(state.loanRate) / 100;
+  const annuity = rate ? capital * rate / (1 - Math.pow(1 + rate, -years)) : capital / years;
   let remaining = capital;
-  let totalInterest = 0;
-  let totalPaid = 0;
-
-  if (capital <= 0 || years <= 0) return { rows, totalInterest, totalPaid, annuity: 0 };
-
-  const annuity = rate === 0 ? capital / years : capital * rate / (1 - Math.pow(1 + rate, -years));
-  const amortConst = capital / years;
-
-  for (let year = 1; year <= years; year += 1) {
+  const rows = [];
+  for (let year = 1; year <= years; year++) {
     const interest = remaining * rate;
-    const amortization = methode === "amortissement" ? amortConst : annuity - interest;
-    const payment = methode === "amortissement" ? amortization + interest : annuity;
-    const end = Math.max(0, remaining - amortization);
-    totalInterest += interest;
-    totalPaid += payment;
-    rows.push({ year, beginning: remaining, interest, amortization, payment, end });
-    remaining = end;
+    const amortization = annuity - interest;
+    remaining = Math.max(0, remaining - amortization);
+    rows.push({ year, beginning: year === 1 ? capital : rows[rows.length - 1].remaining, annuity, interest, amortization, remaining });
   }
-  return { rows, totalInterest, totalPaid, annuity: methode === "annuite" ? annuity : 0 };
+  return { rows, annuity };
 }
 
-function renderBilanFonctionnel() {
-  const b = bilanFonctionnel();
-  renderTable("#bilanFonctionnelTable", ["Élément", "Montant", "Formule", "Lecture"], [
-    row("FRNG", b.frng, "Ressources stables − Emplois stables", b.frng >= 0 ? "Ressources stables suffisantes." : "Risque de financement des immobilisations.", { className: signClass(b.frng) }),
-    row("BFRE", b.bfre, "Actif circ. exploitation − Passif circ. exploitation", b.bfre >= 0 ? "Besoin lié au cycle d’exploitation." : "Excédent d’exploitation.", { className: signClass(b.bfre, false) }),
-    row("BFRHE", b.bfrhe, "Actif hors exploitation − Passif hors exploitation", "Besoin ou ressource hors exploitation.", { className: signClass(b.bfrhe, false) }),
-    row("BFR total", b.bfr, "BFRE + BFRHE", b.bfr >= 0 ? "Besoin global à financer." : "Ressource globale dégagée.", { className: signClass(b.bfr, false) }),
-    row("Trésorerie nette", b.tn, "Trésorerie active − Trésorerie passive", b.tn >= 0 ? "Trésorerie positive." : "Trésorerie négative.", { className: signClass(b.tn) }),
-    row("Contrôle FRNG − BFR", b.check, "Doit être proche de la TN", Math.abs(b.check - b.tn) < 0.01 ? "Équilibre vérifié." : "Écart avec la TN saisie : vérifier les montants.", { className: Math.abs(b.check - b.tn) < 0.01 ? "good" : "warn" })
-  ]);
+function calculate() {
+  const sig = calcSIG();
+  const functional = calcFunctional();
+  const financial = calcFinancial(sig, functional);
+  const breakEven = calcBreakEven();
+  const investment = calcInvestment();
+  const loan = calcLoan();
+
+  renderDashboard(sig, functional, financial, investment);
+  renderFunctional(functional);
+  renderFinancial(financial);
+  renderSIG(sig);
+  renderRatios(sig, functional, financial);
+  renderBreakEven(breakEven);
+  renderInvestment(investment);
+  renderLoan(loan);
+  renderEvolution();
 }
 
-function renderBilanFinancier() {
-  const b = bilanFinancier();
-  renderTable("#bilanFinancierTable", ["Élément", "Valeur", "Formule", "Lecture"], [
-    row("Total actif", b.totalActif, "Actif immobilisé + stocks + créances + disponibilités", "Taille du bilan."),
-    row("Total dettes", b.totalDettes, "Dettes M/LT + Dettes CT", "Endettement global."),
-    row("Fonds de roulement financier", b.fdr, "Capitaux permanents − Actif immobilisé", b.fdr >= 0 ? "Couverture correcte des immobilisations." : "Financement long insuffisant.", { className: signClass(b.fdr) }),
-    row("Liquidité générale", b.liquiditeGenerale, "Actif circulant / Dettes CT", b.liquiditeGenerale >= 1 ? "Actif court terme couvre les dettes CT." : "Tension potentielle à court terme.", { type: "number", className: ratioClass(b.liquiditeGenerale, 1, 0.8) }),
-    row("Liquidité réduite", b.liquiditeReduite, "Créances + disponibilités / Dettes CT", "Mesure sans les stocks.", { type: "number", className: ratioClass(b.liquiditeReduite, 0.8, 0.5) }),
-    row("Liquidité immédiate", b.liquiditeImmediate, "Disponibilités / Dettes CT", "Capacité à payer immédiatement.", { type: "number", className: ratioClass(b.liquiditeImmediate, 0.3, 0.1) }),
-    row("Autonomie financière", b.autonomie, "Capitaux propres / Total passif", "Part financée par les fonds propres.", { type: "percent", className: ratioClass(b.autonomie, 0.35, 0.2) }),
-    row("Ratio d’endettement", b.endettement, "Total dettes / Capitaux propres", "Plus il est élevé, plus la dépendance aux dettes augmente.", { type: "number", className: b.endettement <= 1 ? "good" : b.endettement <= 2 ? "warn" : "bad" })
-  ]);
-}
-
-function renderSig() {
-  const s = sig();
-  renderTable("#sigTable", ["SIG", "Montant", "Formule", "Lecture"], [
-    row("Marge commerciale", s.margeCommerciale, "Ventes marchandises − Achats revendus", "Marge sur activité commerciale.", { className: signClass(s.margeCommerciale) }),
-    row("Production de l’exercice", s.production, "Production vendue + stockée + immobilisée", "Niveau de production."),
-    row("Chiffre d’affaires", s.ca, "Ventes marchandises + production vendue", "Activité vendue."),
-    row("Valeur ajoutée", s.valeurAjoutee, "Marge commerciale + Production − Consommations", "Richesse créée par l’entreprise.", { className: signClass(s.valeurAjoutee) }),
-    row("EBE", s.ebe, "VA + Subventions − Impôts/taxes − Personnel", "Performance pure d’exploitation.", { className: signClass(s.ebe) }),
-    row("Résultat d’exploitation", s.rex, "EBE + produits/reprises − charges/dotations", "Résultat de l’activité normale.", { className: signClass(s.rex) }),
-    row("Résultat financier", s.resultatFinancier, "Produits financiers − Charges financières", "Impact du financement et placements.", { className: signClass(s.resultatFinancier) }),
-    row("Résultat courant avant impôt", s.rcai, "Résultat exploitation + Résultat financier", "Résultat récurrent avant impôt.", { className: signClass(s.rcai) }),
-    row("Résultat non courant", s.resultatNonCourant, "Produits non courants − Charges non courantes", "Éléments exceptionnels / non courants.", { className: signClass(s.resultatNonCourant) }),
-    row("Résultat net", s.resultatNet, "Résultat avant impôt − Impôt", "Résultat final de l’exercice.", { className: signClass(s.resultatNet) }),
-    row("CAF", s.caf, "RN + dotations − reprises + VNA cédée − produits de cession", "Capacité de financement générée.", { className: signClass(s.caf) })
-  ]);
-}
-
-function renderRatios() {
-  const s = sig();
-  const b = bilanFinancier();
-  const bf = bilanFonctionnel();
-  const ratios = [
-    row("Marge nette", safeDiv(s.resultatNet, s.ca), "Résultat net / CA", "Rentabilité finale des ventes.", { type: "percent", className: signClass(safeDiv(s.resultatNet, s.ca)) }),
-    row("Taux d’EBE", safeDiv(s.ebe, s.ca), "EBE / CA", "Performance d’exploitation avant amortissements.", { type: "percent", className: signClass(safeDiv(s.ebe, s.ca)) }),
-    row("Taux de valeur ajoutée", safeDiv(s.valeurAjoutee, s.ca), "VA / CA", "Richesse créée par rapport au CA.", { type: "percent", className: signClass(safeDiv(s.valeurAjoutee, s.ca)) }),
-    row("ROE", safeDiv(s.resultatNet, n("bfi_capitaux_propres")), "Résultat net / Capitaux propres", "Rentabilité des fonds propres.", { type: "percent", className: signClass(safeDiv(s.resultatNet, n("bfi_capitaux_propres"))) }),
-    row("ROA", safeDiv(s.resultatNet, b.totalActif), "Résultat net / Total actif", "Rentabilité économique de l’actif.", { type: "percent", className: signClass(safeDiv(s.resultatNet, b.totalActif)) }),
-    row("Rotation de l’actif", safeDiv(s.ca, b.totalActif), "CA / Total actif", "Efficacité d’utilisation des actifs.", { type: "number", className: ratioClass(safeDiv(s.ca, b.totalActif), 1, 0.5) }),
-    row("BFR en jours de CA", safeDiv(bf.bfr, s.ca) * 360, "BFR / CA × 360", "Nombre de jours de CA immobilisés dans le BFR.", { type: "number", className: Number.isFinite(safeDiv(bf.bfr, s.ca)) && safeDiv(bf.bfr, s.ca) * 360 <= 90 ? "good" : "warn" }),
-    row("CAF / Dettes", safeDiv(s.caf, b.totalDettes), "CAF / Total dettes", "Capacité théorique de remboursement.", { type: "percent", className: ratioClass(safeDiv(s.caf, b.totalDettes), 0.25, 0.1) })
+function renderDashboard(sig, functional, financial, investment) {
+  const ca = n(state.ventesMarchandises) + n(state.productionVendue);
+  const kpis = [
+    ["Chiffre d’affaires", ca, "activité"],
+    ["EBE", sig.ebe, "exploitation"],
+    ["Résultat net", sig.resultatNet, "performance"],
+    ["Trésorerie nette", functional.tn, "équilibre"]
   ];
-  renderTable("#ratiosTable", ["Ratio", "Valeur", "Formule", "Lecture"], ratios);
-}
-
-function renderRentabilite() {
-  const sr = seuilRentabilite();
-  renderTable("#rentabiliteTable", ["Élément", "Valeur", "Formule", "Lecture"], [
-    row("Marge sur coût variable", sr.mcv, "CA − Charges variables", "Marge qui couvre les charges fixes.", { className: signClass(sr.mcv) }),
-    row("Taux de MCV", sr.tauxMcv, "MCV / CA", "Pourcentage de CA disponible après charges variables.", { type: "percent", className: signClass(sr.tauxMcv) }),
-    row("Seuil de rentabilité", sr.sr, "Charges fixes / Taux MCV", "CA minimum pour résultat nul.", { className: signClass(sr.sr) }),
-    row("Marge de sécurité", sr.margeSecurite, "CA − SR", sr.margeSecurite >= 0 ? "Zone de sécurité positive." : "CA insuffisant pour atteindre le seuil.", { className: signClass(sr.margeSecurite) }),
-    row("Indice de sécurité", sr.indiceSecurite, "Marge sécurité / CA", "Part de CA qui peut baisser avant perte.", { type: "percent", className: signClass(sr.indiceSecurite) }),
-    row("Point mort", sr.pointMort, "SR / CA × jours", "Jour approximatif où le seuil est atteint.", { type: "number", className: Number.isFinite(sr.pointMort) && sr.pointMort <= (n("sr_jours") || 360) ? "good" : "warn" })
-  ]);
-}
-
-function renderCashflowInputs() {
-  const tbody = $("#cashflowInputTable tbody");
-  if (!tbody) return;
-  tbody.innerHTML = state.cashflows.map((cf, index) => `
-    <tr>
-      <td>Année ${index + 1}</td>
-      <td><input type="number" step="0.01" value="${Number(cf) || 0}" data-cf-index="${index}" /></td>
-      <td><button class="icon-btn" type="button" data-remove-cf="${index}" aria-label="Supprimer">×</button></td>
-    </tr>
+  document.getElementById("kpiGrid").innerHTML = kpis.map(([label, value, note]) => `
+    <article class="kpi-card">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value ${cssClass(value)}">${money(value)}</div>
+      <div class="kpi-note">${note}</div>
+    </article>
   `).join("");
 
-  $all("[data-cf-index]").forEach(input => {
-    input.addEventListener("input", event => {
-      const idx = Number(event.target.dataset.cfIndex);
-      state.cashflows[idx] = Number(event.target.value) || 0;
-      renderAll();
-    });
-  });
+  let score = 50;
+  score += functional.tn >= 0 ? 12 : -12;
+  score += functional.frng >= functional.bfr ? 12 : -12;
+  score += sig.ebe >= 0 ? 10 : -12;
+  score += sig.resultatNet >= 0 ? 8 : -14;
+  score += financial.liquiditeGenerale >= 1 ? 8 : -8;
+  score = Math.round(clamp(score, 0, 100));
 
-  $all("[data-remove-cf]").forEach(btn => {
-    btn.addEventListener("click", event => {
-      const idx = Number(event.target.dataset.removeCf);
-      state.cashflows.splice(idx, 1);
-      renderAll();
-    });
-  });
+  const cls = score >= 70 ? "good" : score >= 45 ? "warn" : "bad";
+  const label = score >= 70 ? "Solide" : score >= 45 ? "À surveiller" : "Fragile";
+  const ring = document.getElementById("scoreRing");
+  ring.style.background = `conic-gradient(var(--${cls === "good" ? "good" : cls === "warn" ? "warn" : "bad"}) ${score * 3.6}deg, rgba(255,255,255,.08) 0deg 360deg)`;
+  document.getElementById("scoreValue").textContent = score;
+  document.getElementById("scoreTitle").textContent = label;
+  document.getElementById("scoreLine").textContent = `${money(sig.resultatNet)} de résultat net, ${money(functional.frng)} de FRNG, ${money(functional.bfr)} de BFR.`;
+  const pill = document.getElementById("healthPill");
+  pill.textContent = label;
+  pill.className = `status-pill ${cls}`;
+
+  const bars = [
+    ["FRNG", functional.frng],
+    ["BFR", functional.bfr],
+    ["TN", functional.tn],
+    ["VAN", investment.van]
+  ];
+  const max = Math.max(...bars.map(([, value]) => Math.abs(value)), 1);
+  document.getElementById("summaryBars").innerHTML = bars.map(([label, value]) => `
+    <div class="bar-row">
+      <span>${label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${clamp(Math.abs(value) / max * 100, 4, 100)}%"></div></div>
+      <span class="bar-value ${cssClass(value)}">${money(value)}</span>
+    </div>
+  `).join("");
+
+  const signals = [
+    signal(functional.frng >= 0, "FRNG", `${money(functional.frng)}`),
+    signal(functional.tn >= 0, "Trésorerie nette", `${money(functional.tn)}`),
+    signal(financial.liquiditeGenerale >= 1, "Liquidité générale", ratio(financial.liquiditeGenerale)),
+    signal(sig.ebe >= 0, "EBE", `${money(sig.ebe)}`),
+    signal(investment.van >= 0, "VAN", `${money(investment.van)}`)
+  ];
+  document.getElementById("signals").innerHTML = signals.join("");
 }
 
-function renderInvestissement() {
-  const inv = investissement();
-  renderTable("#investissementTable", ["Élément", "Valeur", "Formule", "Lecture"], [
-    row("Valeur actuelle des flux", inv.vaFlux, "Σ CF actualisés", "Valeur actuelle des cash-flows futurs."),
-    row("VAN", inv.van, "VA des flux − Investissement initial", inv.van >= 0 ? "Projet créateur de valeur." : "Projet destructeur de valeur.", { className: signClass(inv.van) }),
-    row("TRI", inv.tri, "Taux qui annule la VAN", Number.isFinite(inv.tri) ? (inv.tri >= inv.rate ? "TRI supérieur au taux exigé." : "TRI inférieur au taux exigé.") : "TRI non calculable avec ces flux.", { type: "percent", className: Number.isFinite(inv.tri) && inv.tri >= inv.rate ? "good" : "warn" }),
-    row("Indice de profitabilité", inv.ip, "VA des flux / Investissement", inv.ip >= 1 ? "Projet acceptable selon IP." : "IP inférieur à 1.", { type: "number", className: ratioClass(inv.ip, 1, 0.8) }),
-    row("Délai de récupération", inv.dr, "Moment où les flux cumulés remboursent I0", Number.isFinite(inv.dr) ? `Environ ${formatNumber(inv.dr)} année(s).` : "Non récupéré sur la période.", { type: "number", className: Number.isFinite(inv.dr) ? "good" : "warn" })
-  ]);
+function signal(ok, title, value) {
+  const cls = ok ? "good" : "bad";
+  return `<div class="signal ${cls}"><div class="signal-dot"></div><div><strong>${title}</strong><span>${value}</span></div></div>`;
 }
 
-function renderEmprunt() {
-  const e = emprunt();
-  renderTable("#empruntSummaryTable", ["Élément", "Valeur", "Formule", "Lecture"], [
-    row("Total intérêts", e.totalInterest, "Σ intérêts", "Coût financier de l’emprunt.", { className: signClass(e.totalInterest, false) }),
-    row("Total payé", e.totalPaid, "Capital + intérêts", "Total des décaissements."),
-    row("Annuité constante", e.annuity, "C × i / (1 − (1+i)^−n)", state.fields.emp_methode === "amortissement" ? "Non utilisée avec amortissements constants." : "Paiement annuel constant.")
-  ]);
+function renderFunctional(f) {
+  const rows = [
+    ["Ressources stables", "CP + Dettes financières + Amort./Prov.", f.ressourcesStables],
+    ["Emplois stables", "Actif immobilisé / emplois stables", n(state.emploisStables)],
+    ["FRNG", "Ressources stables - Emplois stables", f.frng, true],
+    ["BFRE", "Actif exploitation - Passif exploitation", f.bfre],
+    ["BFRHE", "Actif hors exploitation - Passif hors exploitation", f.bfrhe],
+    ["BFR", "BFRE + BFRHE", f.bfr, true],
+    ["Trésorerie nette", "FRNG - BFR", f.tn, true],
+    ["Contrôle trésorerie", "Trésorerie actif - Trésorerie passif", f.tnDirect]
+  ];
+  renderTable("functionalTable", ["Élément", "Formule", "Montant"], rows.map(([a,b,c,total]) => [a,b,c,total]));
+}
 
-  const rows = e.rows.map(r => [
-    r.year,
-    formatMoney(r.beginning),
-    formatMoney(r.interest),
-    formatMoney(r.amortization),
-    formatMoney(r.payment),
-    formatMoney(r.end)
+function renderFinancial(fin) {
+  const rows = [
+    ["Actifs courants", "", n(state.actifsCourants)],
+    ["Passifs courants", "", n(state.passifsCourants)],
+    ["Liquidité générale", "Actifs courants / Passifs courants", fin.liquiditeGenerale, true, "x"],
+    ["Liquidité réduite", "(Actifs courants - Stocks) / Passifs courants", fin.liquiditeReduite, true, "x"],
+    ["Solvabilité générale", "Total actif / Total dettes", fin.solvabilite, false, "x"],
+    ["Autonomie financière", "Capitaux propres / Total passif", fin.autonomie, false, "%"],
+    ["Endettement", "Total dettes / Capitaux propres", fin.endettement, false, "x"],
+    ["Couverture immobilisations", "Capitaux permanents / Emplois stables", fin.couvertureImmobilisations, false, "x"]
+  ];
+  const body = rows.map(([a,b,c,total,unit]) => [a,b,unit === "%" ? c * 100 : c,total,unit]);
+  renderTable("financialTable", ["Élément", "Formule", "Valeur"], body, (value, unit) => unit === "%" ? pct(value) : unit === "x" ? ratio(value) + "x" : money(value));
+}
+
+function renderSIG(sig) {
+  const rows = [
+    ["Coût d’achat revendu", "Achats marchandises + Variation stock", sig.achatsRev],
+    ["Marge commerciale", "Ventes marchandises - Coût d’achat revendu", sig.margeCommerciale, true],
+    ["Production de l’exercice", "Vendue + Stockée + Immobilisée", sig.production],
+    ["Valeur ajoutée", "Marge commerciale + Production - Consommations", sig.valeurAjoutee, true],
+    ["EBE", "VA + Subventions - Impôts - Personnel", sig.ebe, true],
+    ["Résultat d’exploitation", "EBE + Reprises + Autres produits - Dotations - Autres charges", sig.rex, true],
+    ["Résultat financier", "Produits financiers - Charges financières", sig.resultatFinancier],
+    ["RCAI", "Résultat exploitation + Résultat financier", sig.rcai, true],
+    ["Résultat non courant", "Produits non courants - Charges non courantes", sig.resultatNonCourant],
+    ["Résultat net", "RCAI + Non courant - Impôt", sig.resultatNet, true],
+    ["CAF", "Résultat net + Dotations - Reprises", sig.caf, true]
+  ];
+  renderTable("sigTable", ["Solde", "Formule", "Montant"], rows);
+}
+
+function renderRatios(sig, functional, fin) {
+  const ca = n(state.ventesMarchandises) + n(state.productionVendue);
+  const ratios = [
+    ["Marge nette", fin.margeNette * 100, "%", "Résultat net / Chiffre d’affaires"],
+    ["Marge EBE", fin.margeEbe * 100, "%", "EBE / Chiffre d’affaires"],
+    ["ROE", fin.roe * 100, "%", "Résultat net / Capitaux propres"],
+    ["ROA", fin.roa * 100, "%", "Résultat net / Total actif"],
+    ["Liquidité générale", fin.liquiditeGenerale, "x", "Actifs courants / Passifs courants"],
+    ["Liquidité réduite", fin.liquiditeReduite, "x", "Actifs courants hors stocks / Passifs courants"],
+    ["Autonomie", fin.autonomie * 100, "%", "Capitaux propres / Total passif"],
+    ["Endettement", fin.endettement, "x", "Total dettes / Capitaux propres"],
+    ["CAF / Dettes financières", fin.cafDettes * 100, "%", "CAF / Dettes financières"],
+    ["BFR en jours CA", fin.bfrDays, "j", "BFR / CA × 360"],
+    ["Délai clients", fin.dso, "j", "Clients / CA × 360"],
+    ["Délai fournisseurs", fin.dpo, "j", "Fournisseurs / Achats × 360"]
+  ];
+  document.getElementById("ratioBoard").innerHTML = ratios.map(([name, value, unit, note]) => {
+    const formatted = unit === "%" ? pct(value) : unit === "x" ? ratio(value) + "x" : ratio(value, 0) + unit;
+    return `<article class="ratio-card"><h3>${name}</h3><div class="ratio-main"><strong>${formatted.replace(unit === "%" ? " %" : unit, "")}</strong><span>${unit}</span></div><p>${note}</p></article>`;
+  }).join("");
+}
+
+function renderBreakEven(b) {
+  const rows = [
+    ["Marge sur coût variable", "CA - Charges variables", b.mcv],
+    ["Taux de MCV", "MCV / CA", b.tauxMcv * 100, false, "%"],
+    ["Seuil de rentabilité", "Charges fixes / Taux de MCV", b.seuil, true],
+    ["Point mort", "Seuil / CA × 360", b.pointMort, false, "j"],
+    ["Résultat prévisionnel", "MCV - Charges fixes", b.resultat, true],
+    ["Marge unitaire", "Prix unitaire - Coût variable unitaire", b.margeUnitaire],
+    ["Quantité critique", "Charges fixes / Marge unitaire", b.quantiteCritique, false, "u"]
+  ];
+  renderTable("breakEvenTable", ["Élément", "Formule", "Valeur"], rows, formatMixed);
+  const progress = clamp(safeDiv(n(state.caBreak), b.seuil) * 100, 0, 160);
+  document.getElementById("breakEvenMeter").innerHTML = `<div style="width:${Math.min(progress, 100)}%"></div>`;
+}
+
+function renderInvestment(inv) {
+  const rows = inv.rows.map(row => [`Année ${row.year}`, money(row.cf), ratio(row.factor, 4), money(row.discounted)]);
+  rows.push(["Valeur actuelle", "", "", money(inv.pv), true]);
+  rows.push(["VAN", "", "", money(inv.van), true]);
+  rows.push(["Indice de profitabilité", "", "", ratio(inv.ip), false]);
+  rows.push(["TRI", "", "", pct(inv.tri * 100), false]);
+  rows.push(["Délai de récupération", "", "", inv.payback === null ? "Non récupéré" : `${ratio(inv.payback, 2)} années`, false]);
+  renderPlainTable("investmentTable", ["Période", "Cash-flow", "Facteur", "Actualisé"], rows);
+}
+
+function renderLoan(loan) {
+  const rows = loan.rows.map(row => [
+    row.year,
+    money(row.beginning),
+    money(row.annuity),
+    money(row.interest),
+    money(row.amortization),
+    money(row.remaining)
   ]);
-  renderSimpleTable("#empruntTable", ["Année", "Capital début", "Intérêt", "Amortissement", "Annuité", "Capital fin"], rows.length ? rows : [["—", "—", "—", "—", "—", "—"]]);
+  renderPlainTable("loanTable", ["Année", "Capital début", "Annuité", "Intérêt", "Amortissement", "Capital fin"], rows);
 }
 
 function renderEvolutionInputs() {
-  const tbody = $("#evolutionInputTable tbody");
-  if (!tbody) return;
-  tbody.innerHTML = Object.entries(state.evolution).map(([label, values]) => `
+  const head = `<thead><tr><th>Indicateur</th><th class="num">N-2</th><th class="num">N-1</th><th class="num">N</th></tr></thead>`;
+  const body = evolutionRows.map(([key, label]) => `
     <tr>
       <td>${label}</td>
-      ${values.map((value, idx) => `<td><input type="number" step="0.01" value="${Number(value) || 0}" data-evo-label="${label}" data-evo-index="${idx}" /></td>`).join("")}
+      ${[0,1,2].map(i => `<td><input class="evolution-input" data-evo="${key}" data-year="${i}" type="number" step="0.01" value="${state.evolution[key][i]}"></td>`).join("")}
     </tr>
   `).join("");
-
-  $all("[data-evo-label]").forEach(input => {
-    input.addEventListener("input", event => {
-      const label = event.target.dataset.evoLabel;
-      const index = Number(event.target.dataset.evoIndex);
-      state.evolution[label][index] = Number(event.target.value) || 0;
-      renderAll();
+  document.getElementById("evolutionInputs").innerHTML = head + `<tbody>${body}</tbody>`;
+  document.querySelectorAll(".evolution-input").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.evo;
+      const year = Number(input.dataset.year);
+      state.evolution[key][year] = n(input.value);
+      renderEvolution();
     });
   });
 }
 
 function renderEvolution() {
-  const rows = Object.entries(state.evolution).map(([label, values]) => {
-    const [n2, n1, current] = values.map(Number);
-    const evo1 = safeDiv(n1 - n2, n2);
-    const evo2 = safeDiv(current - n1, n1);
-    const absolute = current - n2;
-    return [
-      label,
-      formatMoney(n2),
-      formatMoney(n1),
-      formatMoney(current),
-      `<span class="${signClass(evo1)}">${formatPercent(evo1)}</span>`,
-      `<span class="${signClass(evo2)}">${formatPercent(evo2)}</span>`,
-      `<span class="${signClass(absolute)}">${formatMoney(absolute)}</span>`
-    ];
+  const rows = evolutionRows.map(([key, label]) => {
+    const values = state.evolution[key];
+    const growth1 = safeDiv(values[1] - values[0], values[0]) * 100;
+    const growth2 = safeDiv(values[2] - values[1], values[1]) * 100;
+    return [label, money(values[0]), money(values[1]), money(values[2]), pct(growth1), pct(growth2)];
   });
-  renderSimpleTable("#evolutionTable", ["Indicateur", "N-2", "N-1", "N", "Évolution N-1/N-2", "Évolution N/N-1", "Variation absolue N/N-2"], rows);
+  renderPlainTable("evolutionTable", ["Indicateur", "N-2", "N-1", "N", "N-1/N-2", "N/N-1"], rows);
+  renderEvolutionChart();
 }
 
-function renderDashboard() {
-  const bf = bilanFonctionnel();
-  const s = sig();
-  const b = bilanFinancier();
-  const sr = seuilRentabilite();
-  const inv = investissement();
-  const kpis = [
-    { label: "FRNG", value: formatMoney(bf.frng), note: bf.frng >= 0 ? "Structure stable" : "À renforcer", cls: signClass(bf.frng) },
-    { label: "BFR", value: formatMoney(bf.bfr), note: bf.bfr >= 0 ? "Besoin à financer" : "Ressource dégagée", cls: signClass(bf.bfr, false) },
-    { label: "Résultat net", value: formatMoney(s.resultatNet), note: s.resultatNet >= 0 ? "Bénéfice" : "Perte", cls: signClass(s.resultatNet) },
-    { label: "CAF", value: formatMoney(s.caf), note: s.caf >= 0 ? "Autofinancement positif" : "CAF négative", cls: signClass(s.caf) },
-    { label: "Liquidité générale", value: formatNumber(b.liquiditeGenerale), note: b.liquiditeGenerale >= 1 ? "Court terme couvert" : "Tension CT", cls: ratioClass(b.liquiditeGenerale, 1, 0.8) },
-    { label: "Marge nette", value: formatPercent(safeDiv(s.resultatNet, s.ca)), note: "Résultat net / CA", cls: signClass(safeDiv(s.resultatNet, s.ca)) },
-    { label: "Seuil de rentabilité", value: formatMoney(sr.sr), note: "CA minimum", cls: Number.isFinite(sr.sr) ? "muted" : "warn" },
-    { label: "VAN", value: formatMoney(inv.van), note: inv.van >= 0 ? "Projet favorable" : "Projet défavorable", cls: signClass(inv.van) }
-  ];
-
-  $("#dashboardKpis").innerHTML = kpis.map(k => `
-    <article class="kpi-card">
-      <small>${k.label}</small>
-      <strong class="${k.cls}">${k.value}</strong>
-      <span>${k.note}</span>
-    </article>
-  `).join("");
-
-  const comments = [];
-  if (bf.frng < 0) comments.push("Le FRNG est négatif : les ressources stables ne couvrent pas les emplois stables.");
-  if (bf.tn < 0) comments.push("La trésorerie nette est négative : l’entreprise dépend probablement du financement bancaire court terme.");
-  if (s.resultatNet < 0) comments.push("Le résultat net est négatif : il faut analyser l’exploitation, les charges financières et les éléments non courants.");
-  if (b.liquiditeGenerale < 1 && Number.isFinite(b.liquiditeGenerale)) comments.push("La liquidité générale est inférieure à 1 : attention à la capacité de paiement à court terme.");
-  if (inv.van >= 0 && n("inv_initial") > 0) comments.push("La VAN est positive : l’investissement semble rentable au taux choisi.");
-  if (!comments.length) comments.push("Remplis les champs pour obtenir une lecture automatique. Les indicateurs favorables apparaissent en vert, les points sensibles en orange ou rouge.");
-  $("#globalComment").innerHTML = `<strong>Lecture rapide :</strong> ${comments.join(" ")}`;
+function renderEvolutionChart() {
+  const chart = document.getElementById("evolutionChart");
+  const ca = state.evolution.ca;
+  const rn = state.evolution.rn;
+  const all = [...ca, ...rn];
+  const max = Math.max(...all, 1);
+  const min = Math.min(...all, 0);
+  const points = (arr) => arr.map((value, i) => {
+    const x = 70 + i * 210;
+    const y = 190 - ((value - min) / (max - min || 1)) * 140;
+    return `${x},${y}`;
+  }).join(" ");
+  chart.innerHTML = `
+    <svg viewBox="0 0 560 238" preserveAspectRatio="none" role="img" aria-label="Évolution">
+      <defs>
+        <linearGradient id="lineA" x1="0" x2="1"><stop stop-color="#7dd3fc"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+      </defs>
+      <line x1="50" y1="190" x2="530" y2="190" stroke="rgba(255,255,255,.18)"/>
+      <line x1="50" y1="50" x2="50" y2="190" stroke="rgba(255,255,255,.18)"/>
+      <polyline points="${points(ca)}" fill="none" stroke="url(#lineA)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="${points(rn)}" fill="none" stroke="rgba(52,211,153,.9)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="70" y="220" fill="rgba(255,255,255,.62)" font-size="12">N-2</text>
+      <text x="280" y="220" fill="rgba(255,255,255,.62)" font-size="12">N-1</text>
+      <text x="490" y="220" fill="rgba(255,255,255,.62)" font-size="12">N</text>
+      <text x="390" y="34" fill="#7dd3fc" font-size="12">CA</text>
+      <text x="430" y="34" fill="#34d399" font-size="12">RN</text>
+    </svg>`;
 }
 
-function renderAll() {
-  renderBilanFonctionnel();
-  renderBilanFinancier();
-  renderSig();
-  renderRatios();
-  renderRentabilite();
-  renderCashflowInputs();
-  renderInvestissement();
-  renderEmprunt();
-  renderEvolutionInputs();
-  renderEvolution();
-  renderDashboard();
+function renderTable(id, headers, rows, customFormatter = null) {
+  const thead = `<thead><tr>${headers.map((h, i) => `<th class="${i === headers.length - 1 ? "num" : ""}">${h}</th>`).join("")}</tr></thead>`;
+  const body = rows.map((row) => {
+    const [label, formula, value, total, unit] = row;
+    const formatted = customFormatter ? customFormatter(value, unit) : money(value);
+    return `<tr class="${total ? "total" : ""}"><td>${label}</td><td>${formula}</td><td class="num ${cssClass(value)}">${formatted}</td></tr>`;
+  }).join("");
+  document.getElementById(id).innerHTML = thead + `<tbody>${body}</tbody>`;
 }
 
-function bindInputs() {
-  $all("[data-field]").forEach(input => {
-    const key = input.dataset.field;
-    if (state.fields[key] !== undefined) {
-      input.value = state.fields[key];
-    }
-    input.addEventListener("input", event => {
-      state.fields[key] = numberFields.has(key) ? Number(event.target.value) || 0 : event.target.value;
-      renderAll();
-    });
-    input.addEventListener("change", event => {
-      state.fields[key] = numberFields.has(key) ? Number(event.target.value) || 0 : event.target.value;
-      renderAll();
-    });
+function renderPlainTable(id, headers, rows) {
+  const thead = `<thead><tr>${headers.map((h, i) => `<th class="${i > 0 ? "num" : ""}">${h}</th>`).join("")}</tr></thead>`;
+  const body = rows.map((row) => {
+    const flag = row[row.length - 1];
+    const hasFlag = typeof flag === "boolean";
+    const total = flag === true;
+    const clean = hasFlag ? row.slice(0, -1) : row;
+    return `<tr class="${total ? "total" : ""}">${clean.map((cell, i) => `<td class="${i > 0 ? "num" : ""}">${cell}</td>`).join("")}</tr>`;
+  }).join("");
+  document.getElementById(id).innerHTML = thead + `<tbody>${body}</tbody>`;
+}
+
+function formatMixed(value, unit) {
+  if (unit === "%") return pct(value);
+  if (unit === "j") return `${ratio(value, 1)} jours`;
+  if (unit === "u") return `${ratio(value, 0)} unités`;
+  return money(value);
+}
+
+function bindActions() {
+  document.getElementById("saveBtn").addEventListener("click", persist);
+  document.getElementById("printBtn").addEventListener("click", () => window.print());
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    Object.assign(state, createDefaultState());
+    localStorage.removeItem(STORE_KEY);
+    renderForms();
+    renderEvolutionInputs();
+    calculate();
+    toast("Réinitialisé");
   });
-
-  const currencyInput = $("#currencyInput");
-  const companyInput = $("#companyInput");
-  const periodInput = $("#periodInput");
-  [currencyInput, companyInput, periodInput].forEach(input => {
-    if (!input) return;
-    const key = input.id.replace("Input", "");
-    if (state.fields[key]) input.value = state.fields[key];
-    input.addEventListener("input", () => {
-      state.fields[key] = input.value;
-      renderAll();
-    });
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "analyse-financiere.json";
+    a.click();
+    URL.revokeObjectURL(url);
   });
-}
-
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  toast("Dossier sauvegardé.");
-}
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    Object.assign(state.fields, parsed.fields || {});
-    state.cashflows = Array.isArray(parsed.cashflows) ? parsed.cashflows : state.cashflows;
-    state.evolution = parsed.evolution || state.evolution;
-  } catch (error) {
-    console.warn("Impossible de charger la sauvegarde", error);
-  }
-}
-
-function downloadJson() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const name = (state.fields.company || "analyse-financiere").toString().trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-  a.href = url;
-  a.download = `${name || "analyse-financiere"}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importJson(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+  document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
     try {
-      const parsed = JSON.parse(reader.result);
-      state.fields = parsed.fields || {};
-      state.cashflows = Array.isArray(parsed.cashflows) ? parsed.cashflows : [0, 0, 0, 0];
-      state.evolution = parsed.evolution || state.evolution;
-      $all("[data-field]").forEach(input => {
-        const key = input.dataset.field;
-        input.value = state.fields[key] ?? "";
-      });
-      ["currency", "company", "period"].forEach(key => {
-        const input = $(`#${key}Input`);
-        if (input) input.value = state.fields[key] ?? (key === "currency" ? "DH" : "");
-      });
-      renderAll();
-      toast("Fichier importé.");
-    } catch (error) {
-      toast("Fichier JSON invalide.");
+      const content = await file.text();
+      Object.assign(state, createDefaultState(), JSON.parse(content));
+      renderForms();
+      renderEvolutionInputs();
+      calculate();
+      toast("Importé");
+    } catch (_) {
+      toast("Fichier invalide");
     }
-  };
-  reader.readAsText(file);
-}
-
-function resetAll() {
-  if (!confirm("Effacer toutes les données du dossier ?")) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state.fields = {};
-  state.cashflows = [0, 0, 0, 0];
-  state.evolution = {
-    "Chiffre d’affaires": [0, 0, 0],
-    "Résultat net": [0, 0, 0],
-    "Total actif": [0, 0, 0],
-    "Capitaux propres": [0, 0, 0],
-    "EBE": [0, 0, 0]
-  };
-  $all("input").forEach(input => {
-    if (input.type !== "file") input.value = input.id === "currencyInput" ? "DH" : "";
+    event.target.value = "";
   });
-  $all("select[data-field]").forEach(select => { select.selectedIndex = 0; });
-  state.fields.currency = "DH";
-  renderAll();
-  toast("Dossier réinitialisé.");
 }
 
 function toast(message) {
-  const existing = $(".toast");
-  if (existing) existing.remove();
-  const el = document.createElement("div");
-  el.className = "toast";
+  const el = document.getElementById("toast");
   el.textContent = message;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2500);
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 1700);
 }
 
-function fillDemo() {
-  state.fields = {
-    currency: "DH",
-    company: "Exemple SA",
-    period: "Exercice N",
-    bf_emplois_stables: 820000,
-    bf_ace: 360000,
-    bf_ache: 50000,
-    bf_tresorerie_active: 70000,
-    bf_ressources_stables: 980000,
-    bf_pce: 210000,
-    bf_pche: 35000,
-    bf_tresorerie_passive: 25000,
-    bfi_actif_immobilise: 780000,
-    bfi_stocks: 160000,
-    bfi_creances: 220000,
-    bfi_disponibilites: 70000,
-    bfi_capitaux_propres: 560000,
-    bfi_dettes_mlt: 420000,
-    bfi_dettes_ct: 250000,
-    sig_ventes_marchandises: 600000,
-    sig_achats_revendus: 370000,
-    sig_production_vendue: 900000,
-    sig_production_stockee: 20000,
-    sig_production_immobilisee: 0,
-    sig_consommations: 430000,
-    sig_subventions: 0,
-    sig_impots_taxes: 35000,
-    sig_charges_personnel: 270000,
-    sig_autres_produits_exp: 10000,
-    sig_autres_charges_exp: 22000,
-    sig_dotations_exp: 65000,
-    sig_reprises_exp: 8000,
-    sig_produits_financiers: 7000,
-    sig_charges_financieres: 32000,
-    sig_produits_non_courants: 5000,
-    sig_charges_non_courants: 9000,
-    sig_impot_resultat: 41000,
-    sig_dotations_caf: 70000,
-    sig_reprises_caf: 10000,
-    sig_produits_cession: 0,
-    sig_vna_cession: 0,
-    sr_ca: 1500000,
-    sr_charges_variables: 850000,
-    sr_charges_fixes: 360000,
-    sr_jours: 360,
-    inv_initial: 300000,
-    inv_taux: 10,
-    emp_capital: 250000,
-    emp_taux: 6,
-    emp_duree: 5,
-    emp_methode: "annuite"
-  };
-  state.cashflows = [90000, 95000, 105000, 110000, 120000];
-  state.evolution = {
-    "Chiffre d’affaires": [1200000, 1380000, 1500000],
-    "Résultat net": [72000, 91000, 112000],
-    "Total actif": [1050000, 1160000, 1230000],
-    "Capitaux propres": [470000, 520000, 560000],
-    "EBE": [230000, 280000, 305000]
-  };
-  $all("[data-field]").forEach(input => {
-    const key = input.dataset.field;
-    input.value = state.fields[key] ?? "";
-  });
-  $("#currencyInput").value = state.fields.currency;
-  $("#companyInput").value = state.fields.company;
-  $("#periodInput").value = state.fields.period;
-  renderAll();
-  toast("Exemple chargé.");
-}
-
-function setup() {
-  load();
-  if (!state.fields.currency) state.fields.currency = "DH";
-  bindInputs();
-  renderAll();
-
-  $("#saveBtn")?.addEventListener("click", save);
-  $("#saveBtn2")?.addEventListener("click", save);
-  $("#printBtn")?.addEventListener("click", () => window.print());
-  $("#downloadJsonBtn")?.addEventListener("click", downloadJson);
-  $("#importJsonInput")?.addEventListener("change", event => importJson(event.target.files?.[0]));
-  $("#resetBtn")?.addEventListener("click", resetAll);
-  $("#addCfRow")?.addEventListener("click", () => {
-    state.cashflows.push(0);
-    renderAll();
-  });
-  $("#clearCfRows")?.addEventListener("click", () => {
-    state.cashflows = [];
-    renderAll();
-  });
-  $("[data-fill-demo]")?.addEventListener("click", fillDemo);
-}
-
-document.addEventListener("DOMContentLoaded", setup);
+hydrate();
+bindNavigation();
+renderForms();
+renderEvolutionInputs();
+bindActions();
+calculate();
